@@ -1,6 +1,5 @@
 import React, { Component } from 'react';
 import Particles from 'react-particles-js';
-import Clarifai from 'clarifai';
 import FaceRecognition from './components/FaceRecognition/FaceRecognition';
 import Navigation from './components/Navigation/Navigation';
 import Logo from './components/Logo/Logo';
@@ -10,14 +9,10 @@ import Signin from './components/Signin/Signin';
 import ImageLinkForm from './components/ImageLinkForm/ImageLinkForm';
 import './App.css';
 
-const app = new Clarifai.App({
- apiKey: '91c90965e2024f83a1a49fa7445d8c70'
-});
-
 const particlesOptions = {
   particles: {
     number: {
-      value: 50,
+      value: 75,
       density: {
         enable: true,
         value_area: 800
@@ -26,12 +21,7 @@ const particlesOptions = {
   }
 }
 
-// Note addition of user within the state object below.
-
-class App extends Component {
-  constructor () {
-    super();
-    this.state = {
+const initialState = {
       input: '',
       imageUrl: '',
       box: {},
@@ -45,9 +35,12 @@ class App extends Component {
         joined: ''
       }
     }
-  }
 
-// Function to alter the state object with the data received.
+class App extends Component {
+  constructor () {
+    super();
+    this.state = initialState
+  }
 
 loadUser = (data) => {
   this.setState({user: {
@@ -64,8 +57,6 @@ calculateFaceLocation = (data) => {
   const image = document.getElementById('inputimage');
   const width = Number(image.width);
   const height = Number(image.height);
-  console.log(clarifaiFace);
-  console.log(width, height);
   return {
     leftCol: clarifaiFace.left_col * width,
     topRow: clarifaiFace.top_row * height,
@@ -81,16 +72,18 @@ displayFaceBox = (box) => {
 
 onInputChange = (event) => {
    this.setState({input: event.target.value});
-  }
-
-// Note nested function below. The data retrived from the Clarifai API is fed into the calculateFaceLocation function. 
+}
 
 onButtonSubmit = () => {
     this.setState({imageUrl: this.state.input});
-    app.models
-      .predict(
-        Clarifai.FACE_DETECT_MODEL,
-        this.state.input)
+      fetch('http://localhost:3000/imageurl', {
+        method: 'post',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          input: this.state.input
+        })
+      })
+      .then(response => response.json())
       .then(response => {
         if (response) {
           fetch('http://localhost:3000/image', {
@@ -104,7 +97,7 @@ onButtonSubmit = () => {
             .then(count => {
               this.setState(Object.assign(this.state.user, { entries: count}))
             })
-
+            .catch(console.log)
         }
         this.displayFaceBox(this.calculateFaceLocation(response))
       })
@@ -113,7 +106,7 @@ onButtonSubmit = () => {
 
 onRouteChange = (route) => {
   if (route === 'signout') {
-    this.setState({isSignedIn:false})
+    this.setState(initialState)
   } else if (route=== 'home') {
     this.setState({isSignedIn: true})
   }
@@ -153,7 +146,5 @@ onRouteChange = (route) => {
     );
   }
 }
-
-// Note above, functions must be passed into the component!
 
 export default App;
